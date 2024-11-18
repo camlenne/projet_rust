@@ -31,22 +31,35 @@ fn main() {
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("Erreur de lecture");
     
-        match input.trim().to_lowercase().as_str() {
-            "z" => {
-                if player_y > 0 { player_y -= 1; } // Déplacer vers le haut
-            }
-            "s" => {
-                if player_y < map.height - 1 { player_y += 1; } // Déplacer vers le bas
-            }
-            "q" => {
-                if player_x > 0 { player_x -= 1; } // Déplacer vers la gauche
-            }
-            "d" => {
-                if player_x < map.width - 1 { player_x += 1; } // Déplacer vers la droite
-            }
+        // Calcul des nouvelles coordonnées après le déplacement
+        let (new_x, new_y) = match input.trim().to_lowercase().as_str() {
+            "z" => (player_x, if player_y > 0 { player_y - 1 } else { player_y }),
+            "s" => (player_x, if player_y < map.height - 1 { player_y + 1 } else { player_y }),
+            "q" => (if player_x > 0 { player_x - 1 } else { player_x }, player_y),
+            "d" => (if player_x < map.width - 1 { player_x + 1 } else { player_x }, player_y),
             _ => {
                 println!("Commande invalide. Essayez à nouveau.");
                 continue;
+            }
+        };
+
+        // Vérifier si la nouvelle position est un mur
+        if let Some(tile) = map.get_tile(new_x, new_y) {
+            if matches!(tile, Tile::Wall) {
+                println!("Vous ne pouvez pas avancer, vous êtes face à un mur.");
+                continue;
+            }
+        }
+
+        // Mettre à jour les coordonnées du joueur
+        player_x = new_x;
+        player_y = new_y;
+
+        // Vérifier si le joueur est sur une case avec un monstre
+        if let Some(tile) = map.get_tile(player_x, player_y) {
+            if matches!(tile, Tile::Monster) {
+                println!("Coup dur, vous avez été tué par le dinosaure !");
+                break; // Terminer la boucle de jeu
             }
         }
     

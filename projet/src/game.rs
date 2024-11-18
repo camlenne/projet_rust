@@ -54,4 +54,12 @@ impl Map {
             self.tiles[y][x] = tile;
         }
     }
+
+    pub fn get_tile(&self, x: usize, y: usize) -> Option<&Tile> {
+        if x < self.width && y < self.height {
+            Some(&self.tiles[y][x])
+        } else {
+            None
+        }
+    }
 }
