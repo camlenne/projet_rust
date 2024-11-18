@@ -35,13 +35,18 @@ impl Map {
         Map { width, height, tiles }
     }
 
-    pub fn display(&self, player_x: usize, player_y: usize) {
+    pub fn display(&self, players: &Vec<Player>) {
         for y in 0..self.height {
             for x in 0..self.width {
-                // Si la position du joueur correspond à cette case, on affiche "P" pour le joueur
-                if x == player_x && y == player_y {
-                    print!("🦖");
-                } else {
+                let mut printed = false;
+                for player in players {
+                    if player.x == x && player.y == y {
+                        print!("🦖");  // Afficher un joueur
+                        printed = true;
+                        break;
+                    }
+                }
+                if !printed {
                     print!("{}", self.tiles[y][x]);
                 }
             }
@@ -52,6 +57,47 @@ impl Map {
     pub fn set_tile(&mut self, x: usize, y: usize, tile: Tile) {
         if x < self.width && y < self.height {
             self.tiles[y][x] = tile;
+        }
+    }
+}
+
+pub struct Player{
+    pub x: usize,
+    pub y: usize,
+    pub name: String,
+    pub health: i32,
+}
+
+impl Player {
+    pub fn new(name: &str,x: usize,y: usize,health: i32) -> Self {
+        Player { 
+            x, 
+            y, 
+            name: name.to_string(), 
+            health,
+        }
+    }
+    pub fn move_up(&mut self) {
+        if self.y > 0 {
+            self.y -= 1;
+        }
+    }
+
+    pub fn move_down(&mut self, map_height: usize) {
+        if self.y < map_height - 1 {
+            self.y += 1;
+        }
+    }
+
+    pub fn move_left(&mut self) {
+        if self.x > 0 {
+            self.x -= 1;
+        }
+    }
+
+    pub fn move_right(&mut self, map_width: usize) {
+        if self.x < map_width - 1 {
+            self.x += 1;
         }
     }
 }
