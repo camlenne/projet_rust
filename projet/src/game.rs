@@ -8,6 +8,7 @@ pub enum Tile {
     Monster,
     Start,
     End,
+    Tree,
 }
 
 impl fmt::Display for Tile {
@@ -18,6 +19,7 @@ impl fmt::Display for Tile {
             Tile::Monster => '👾',
             Tile::Start => '🔛',
             Tile::End => '🔚',
+            Tile:: Tree => '🌳',
         };
         write!(f, "{}", symbol)
     }
