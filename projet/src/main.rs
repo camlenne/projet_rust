@@ -54,6 +54,14 @@ fn main() {
         // Mettre à jour les coordonnées du joueur
         player_x = new_x;
         player_y = new_y;
+
+        // Vérifier si le joueur est sur une case avec un monstre
+        if let Some(tile) = map.get_tile(player_x, player_y) {
+            if matches!(tile, Tile::Monster) {
+                println!("Coup dur, vous avez été tué par le dinosaure !");
+                break; // Terminer la boucle de jeu
+            }
+        }
     
         // Si le joueur atteint l'objectif, terminer le jeu
         if player_x == 9 && player_y == 9 {
