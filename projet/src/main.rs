@@ -1,64 +1,10 @@
-use std::fmt;
 use std::io::{self, Write};
 
+mod game;
+use game::{Map, Tile}; // Importation des éléments de game.rs
 
-#[derive(Debug, Clone)]  // Ajoute `Clone` ici
-enum Tile {
-    Empty,
-    Wall,
-    Monster,
-    Start,
-    End,
-}
-
-impl fmt::Display for Tile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let symbol = match *self {
-            Tile::Empty => '.',
-            Tile::Wall => '🧱',
-            Tile::Monster => '👾',
-            Tile::Start => '🔛',
-            Tile::End => '🔚',
-        };
-        write!(f, "{}", symbol)
-    }
-}
-
-struct Map {
-    width: usize,
-    height: usize,
-    tiles: Vec<Vec<Tile>>,
-}
-
-impl Map {
-    fn new(width: usize, height: usize) -> Self {
-        let tiles = vec![vec![Tile::Empty; width]; height]; // Cela fonctionnera maintenant
-        Map { width, height, tiles }
-    }
-
-    fn display(&self, player_x: usize, player_y: usize) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                // Si la position du joueur correspond à cette case, on affiche "P" pour le joueur
-                if x == player_x && y == player_y {
-                    print!("🦖");
-                } else {
-                    print!("{}", self.tiles[y][x]);
-                }
-            }
-            println!();
-        }
-    }
-
-    fn set_tile(&mut self, x: usize, y: usize, tile: Tile) {
-        if x < self.width && y < self.height {
-            self.tiles[y][x] = tile;
-        }
-    }
-}
 
 fn main() {
-    // Créer une carte de 10x10
     let mut map = Map::new(30, 10);
 
     let mut player_x = 0;
