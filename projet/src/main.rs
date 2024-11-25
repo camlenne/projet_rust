@@ -3,11 +3,14 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
 use std::time::Duration;
 use rand::Rng;
+use crossterm::event::{self, Event, KeyCode};
+use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
 
 mod player;
 mod map;
 use player::Player; // Importation des éléments de game.rs
 use map::Map;
+
 fn main() {
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
     let turn_clone = Arc::clone(&turn);
@@ -32,14 +35,11 @@ fn main() {
                 turn_num = cvar.wait(turn_num).unwrap();
             }
             // Le thread secondaire peut maintenant s'exécuter.
-            let mut scoring = score_clone.lock().unwrap();
-            if *scoring > 10 {
+            let scoring = score_clone.lock().unwrap();
+            if *scoring % 10 == 0 {
                 let mut players_lock = players_thread.lock().unwrap(); // Obtenir un verrou
                 players_lock.push(Player::new("Nouveau", 2, 2, 100, '🦕')); // Ajouter un joueur
-                println!("\nNouveau joueur ajouté ! Liste actuelle :");
-                *scoring = 0;
             }
-            *scoring = *scoring + 1;
             let mut players = players_thread.lock().unwrap();
             for i in 1..players.len(){
                 //TODO préférez une itération
@@ -64,6 +64,7 @@ fn main() {
     });
 
     loop {
+        let mut stdout = io::stdout();
         let (lock, cvar) = &*turn;
         let mut turn_num = lock.lock().unwrap();
 
@@ -81,26 +82,45 @@ fn main() {
         let humain = &mut players[0];
     
         // Demander aux joueurs de se déplacer
-        print!("{} (Déplacez-vous Z: Haut, Q: Gauche, S: Bas, D: Droite) : ", humain.name);
-        io::stdout().flush().unwrap();
-
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Erreur de lecture");
-
-        match input.trim().to_lowercase().as_str() {
-            "z" => humain.move_up(),
-            "s" => humain.move_down(map.height),
-            "q" => humain.move_left(),
-            "d" => humain.move_right(map.width),
+        println!("{} (Déplacez-vous Z: Haut, Q: Gauche, S: Bas, D: Droite, X: Quitter) score ({}), points de vie ({})", humain.name,*scoring,humain.health);
+        let input = read_input();
+        
+        match input {
+            'z' => humain.move_up(),
+            's' => humain.move_down(map.height),
+            'q' => humain.move_left(),
+            'd' => humain.move_right(map.width),
+            'x' => break,
             _ => {
                 println!("Commande invalide. Essayez à nouveau.");
                 continue;
             }
         }
+        write!(stdout, "{}", termion::clear::All).unwrap();
         *scoring +=1;
         
         *turn_num = 1; // Passer la main au thread secondaire.
         cvar.notify_one(); // Notifier le thread secondaire.
         thread::sleep(Duration::from_millis(150)); // Attendre un peu avant la prochaine itération.
-    }    
+    }  
+    println!("Au revoir !");
+}
+
+
+// Lit l'entrée utilisateur
+fn read_input() -> char {
+    enable_raw_mode().unwrap();
+    let result = loop {
+        if event::poll(std::time::Duration::from_millis(100)).unwrap() {
+            if let Event::Key(key_event) = event::read().unwrap() {
+                match key_event.code {
+                    KeyCode::Char(c) => break c,
+                    KeyCode::Esc => break 'x',
+                    _ => {}
+                }
+            }
+        }
+    };
+    disable_raw_mode().unwrap();
+    result
 }

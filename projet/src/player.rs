@@ -39,4 +39,19 @@ impl Player {
             self.x += 1;
         }
     }
+    pub fn remove_life(&mut self, points_removed: i32) {
+        if self.health > points_removed{
+            self.health = self.health - points_removed;
+        }
+        else{
+            self.health = 0;
+        }
+    }
+    pub fn gain_life(&mut self, points_gained: i32) {
+        if self.health >= 100{
+            self.health = 100;
+        }else{
+            self.health = self.health + points_gained;
+        }
+    }
 }
