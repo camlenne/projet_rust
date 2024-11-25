@@ -49,12 +49,19 @@ impl Map {
         for y in 0..height {
             for x in 0..width {
                 // Logique de génération aléatoire : 10% de chance d'une tuile mur
-                if rng.gen_range(0..100) < 10 {
+                // TODO: vérifier que il n'y a pas de chevauchements de mur/monstrer etc...
+                if rng.gen_range(0..100) < 15 {
                     tiles[y][x] = Tile::Wall;
+                }
+                if rng.gen_range(0..100) < 5 {
+                    tiles[y][x] = Tile::Monster;
+                }
+                if rng.gen_range(0..100) < 5 {
+                    tiles[y][x] = Tile::Life;
                 }
             }
         }
-
+        tiles[width-1][height-1] = Tile::End;/// TODO la fin doit etre accessible 
         tiles
     }
     pub fn display(&self, players: &Vec<Player>) {

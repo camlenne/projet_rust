@@ -11,13 +11,9 @@ use map::Map;
 fn main() {
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
     let turn_clone = Arc::clone(&turn);
-
     let score = Arc::new(Mutex::new(0));
     let score_clone = Arc::clone(&score);
-
     let map = Map::new(10, 10);
-    
-
     let players = Arc::new(Mutex::new(vec![
         Player::new("Humain", 0, 0, 100,'🦖'),
         Player::new("Dino", 1, 0, 100,'🦕'),
@@ -26,7 +22,7 @@ fn main() {
     // Cloner les références partagées pour le thread
     let players_thread = Arc::clone(&players);
 
-    let handle = thread::spawn(move || {
+    thread::spawn(move || {
         loop{
             let (lock, cvar) = &*turn_clone;
             let mut turn_num = lock.lock().unwrap();
@@ -35,7 +31,6 @@ fn main() {
             while *turn_num != 1 {
                 turn_num = cvar.wait(turn_num).unwrap();
             }
-
             // Le thread secondaire peut maintenant s'exécuter.
             let mut scoring = score_clone.lock().unwrap();
             if *scoring > 10 {
@@ -45,14 +40,9 @@ fn main() {
                 *scoring = 0;
             }
             *scoring = *scoring + 1;
-
-
             let mut players = players_thread.lock().unwrap();
-            
             for i in 1..players.len(){
                 //TODO préférez une itération
-
-
                 let dino = &mut players[i];
                 // Generate random number in the range [0, 99]
                 let num = rand::thread_rng().gen_range(1..5);
@@ -64,12 +54,9 @@ fn main() {
                     _ => {
                         println!("Commande invalide. Essayez à nouveau.");
                         continue;
-                    }
-                    
+                    }                    
                 }
             }
-            
-
             *turn_num = 0; // Passer la main au thread principal.
             cvar.notify_one(); // Notifier le thread principal.
             thread::sleep(Duration::from_millis(100)); // Attendre un peu avant la prochaine itération.
@@ -83,10 +70,8 @@ fn main() {
         // Attendre que ce soit à son tour (turn_num doit être 0 pour le thread principal).
         while *turn_num != 0 {
             turn_num = cvar.wait(turn_num).unwrap();
-        }
-        
-        let mut scoring = score.lock().unwrap();
-        
+        }        
+        let mut scoring = score.lock().unwrap();        
         {
             // Emprunt immuable pour l'affichage
             let players_snapshot = players.lock().unwrap();
@@ -117,6 +102,5 @@ fn main() {
         *turn_num = 1; // Passer la main au thread secondaire.
         cvar.notify_one(); // Notifier le thread secondaire.
         thread::sleep(Duration::from_millis(150)); // Attendre un peu avant la prochaine itération.
-    }
-    
+    }    
 }
