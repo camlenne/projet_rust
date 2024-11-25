@@ -61,7 +61,8 @@ impl Map {
                 }
             }
         }
-        tiles[width-1][height-1] = Tile::End;/// TODO la fin doit etre accessible 
+        tiles[0][0] = Tile::Start;// TODO le début ne doit pas etre superposé par un dino
+        tiles[width-1][height-1] = Tile::End;// TODO la fin doit etre accessible 
         tiles
     }
     pub fn display(&self, players: &Vec<Player>) {
