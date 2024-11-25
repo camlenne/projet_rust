@@ -41,7 +41,7 @@ impl Map {
                 let mut printed = false;
                 for player in players {
                     if player.x == x && player.y == y {
-                        print!("🦖");  // Afficher un joueur
+                        print!("{}", player.emoji);  // Afficher un joueur
                         printed = true;
                         break;
                     }
@@ -66,15 +66,17 @@ pub struct Player{
     pub y: usize,
     pub name: String,
     pub health: i32,
+    pub emoji: char,
 }
 
 impl Player {
-    pub fn new(name: &str,x: usize,y: usize,health: i32) -> Self {
+    pub fn new(name: &str,x: usize,y: usize,health: i32,emoji : char) -> Self {
         Player { 
             x, 
             y, 
             name: name.to_string(), 
             health,
+            emoji,
         }
     }
     pub fn move_up(&mut self) {
