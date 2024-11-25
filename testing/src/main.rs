@@ -1,38 +1,68 @@
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use crossterm::{event::{self, Event, KeyCode}, terminal, execute};
+use std::io::{stdout, Write};
 
-fn main() {
-    // Créer une variable partagée avec Mutex pour une gestion sûre de la concurrence.
-    let counter = Arc::new(Mutex::new(0));
+#[derive(Debug)]
+struct Player {
+    name: String,
+    x: i32,
+    y: i32,
+    health: i32,
+    icon: char,
+}
 
-    // Cloner l'Arc pour le passer dans le thread secondaire.
-    let counter_clone = Arc::clone(&counter);
-
-    // Créer un thread secondaire.
-    let handle = thread::spawn(move || {
-        for _ in 0..5 {
-            // Verrouiller l'accès à la variable partagée.
-            let mut num = counter_clone.lock().unwrap();
-            *num += 1; // Modifier la variable partagée.
-            println!("Thread secondaire: {}", num);
-            thread::sleep(Duration::from_millis(100)); // Attendre un peu avant la prochaine itération.
+impl Player {
+    fn new(name: &str, x: i32, y: i32, health: i32, icon: char) -> Self {
+        Self {
+            name: name.to_string(),
+            x,
+            y,
+            health,
+            icon,
         }
-    });
+    }
+}
 
-    // Le thread principal fait également des itérations.
-    for _ in 0..5 {
-        // Verrouiller l'accès à la variable partagée.
-        let mut num = counter.lock().unwrap();
-        *num += 1; // Modifier la variable partagée.
-        println!("Thread principal: {}", num);
-        thread::sleep(Duration::from_millis(150)); // Attendre avant la prochaine itération.
+fn main() -> crossterm::Result<()> {
+    let mut stdout = stdout();
+    terminal::enable_raw_mode()?;
+    execute!(stdout, terminal::EnterAlternateScreen)?;
+
+    // Liste des joueurs partagée
+    let players = Arc::new(Mutex::new(vec![
+        Player::new("Humain", 0, 0, 100, '🦖'),
+        Player::new("Dino", 1, 0, 100, '🦕'),
+    ]));
+
+    println!("Appuyez sur 'N' pour ajouter un nouveau joueur. Échap pour quitter.");
+
+    for c in std::iter::from_fn(|| {
+        match event::read() {
+            Ok(Event::Key(key_event)) => Some(key_event),
+            _ => None,
+        }
+    }) {
+        match c.code {
+            KeyCode::Char('n') => {
+                let mut players_lock = players.lock().unwrap(); // Obtenir un verrou
+                players_lock.push(Player::new("Nouveau", 2, 2, 100, '🙂'));
+                println!("\nNouveau joueur ajouté ! Liste actuelle :");
+                for player in players_lock.iter() {
+                    println!("{:?}", player);
+                }
+            }
+            KeyCode::Esc => {
+                println!("\nQuitter !");
+                break;
+            }
+            _ => {
+                print!("\rTouche pressée : {:?}\n", c.code);
+                stdout.flush()?; // Forcer l'affichage immédiat
+            }
+        }
     }
 
-    // Attendre que le thread secondaire termine.
-    handle.join().unwrap();
-
-    // Afficher la valeur finale de la variable partagée.
-    let final_value = *counter.lock().unwrap();
-    println!("Valeur finale du compteur: {}", final_value);
+    execute!(stdout, terminal::LeaveAlternateScreen)?;
+    terminal::disable_raw_mode()?;
+    Ok(())
 }

@@ -5,8 +5,9 @@ use std::time::Duration;
 use rand::Rng;
 
 mod game;
-use game::{Map, Tile,Player}; // Importation des éléments de game.rs
-
+mod map;
+use game::Player; // Importation des éléments de game.rs
+use map::Map;
 fn main() {
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
     let turn_clone = Arc::clone(&turn);
@@ -14,19 +15,13 @@ fn main() {
     let score = Arc::new(Mutex::new(0));
     let score_clone = Arc::clone(&score);
 
-    let mut map = Map::new(10, 10);
+    let map = Map::new(10, 10);
+    
 
     let players = Arc::new(Mutex::new(vec![
         Player::new("Humain", 0, 0, 100,'🦖'),
         Player::new("Dino", 1, 0, 100,'🦕'),
     ]));
-
-    // Définir quelques cases
-    map.set_tile(0, 0, Tile::Start);
-    map.set_tile(9, 9, Tile::End);
-    map.set_tile(3, 4, Tile::Wall);
-    map.set_tile(3, 6, Tile::Wall);
-    map.set_tile(5, 5, Tile::Monster);
 
     // Cloner les références partagées pour le thread
     let players_thread = Arc::clone(&players);
@@ -44,25 +39,36 @@ fn main() {
             // Le thread secondaire peut maintenant s'exécuter.
             let mut scoring = score_clone.lock().unwrap();
             if *scoring > 10 {
-                //new player added
-                //Add
-                //reset score
+                let mut players_lock = players_thread.lock().unwrap(); // Obtenir un verrou
+                players_lock.push(Player::new("Nouveau", 2, 2, 100, '🦕')); // Ajouter un joueur
+                println!("\nNouveau joueur ajouté ! Liste actuelle :");
                 *scoring = 0;
             }
+            *scoring = *scoring + 1;
+
+
             let mut players = players_thread.lock().unwrap();
-            let dino = &mut players[1];
-            // Generate random number in the range [0, 99]
-            let num = rand::thread_rng().gen_range(1..5);
-            match num {
-                1 => dino.move_up(),
-                2 => dino.move_down(map.height),
-                3 => dino.move_left(),
-                4 => dino.move_right(map.width),
-                _ => {
-                    println!("Commande invalide. Essayez à nouveau.");
-                    continue;
+            
+            for i in 1..players.len(){
+                //TODO préférez une itération
+
+
+                let dino = &mut players[i];
+                // Generate random number in the range [0, 99]
+                let num = rand::thread_rng().gen_range(1..5);
+                match num {
+                    1 => dino.move_up(),
+                    2 => dino.move_down(map.height),
+                    3 => dino.move_left(),
+                    4 => dino.move_right(map.width),
+                    _ => {
+                        println!("Commande invalide. Essayez à nouveau.");
+                        continue;
+                    }
+                    
                 }
             }
+            
 
             *turn_num = 0; // Passer la main au thread principal.
             cvar.notify_one(); // Notifier le thread principal.
