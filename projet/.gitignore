@@ -1,0 +1,18 @@
+# Ignorer le fichier Cargo.lock uniquement dans les sous-dossiers
+**/Cargo.lock
+
+# Ignorer tous les fichiers générés dans le dossier target/
+**/target/
+
+# Si besoin, ignorer uniquement des types spécifiques de fichiers dans target/
+#**/target/*.json
+#**/target/**/*.d
+#**/target/**/*.rlib
+#**/target/**/*.rmeta
+#**/target/**/*.so
+
+# Ignorer les fichiers générés par Rust
+*.rlib
+*.rmeta
+*.so
+*.d
