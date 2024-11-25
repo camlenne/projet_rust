@@ -1,9 +1,13 @@
-use std::fs::{self, OpenOptions};
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 use rand::Rng;
 
 mod game;
+mod map_generation;
+mod score; // Nouveau module
+
 use game::{Map, Tile};
+use map_generation::{place_trees, place_walls};
+use score::{save_score, display_last_scores}; // Import des fonctions liées aux scores
 
 fn main() {
     let mut map = Map::new(30, 10);
@@ -14,24 +18,11 @@ fn main() {
     map.set_tile(9, 9, Tile::End);
     map.set_tile(5, 5, Tile::Monster);
 
-    // Placer 5 arbres aléatoires
     let mut rng = rand::thread_rng();
-    for _ in 0..5 {
-        loop {
-            let x = rng.gen_range(0..map.width);
-            let y = rng.gen_range(0..map.height);
 
-            if let Some(tile) = map.get_tile(x, y) {
-                if matches!(tile, Tile::Empty) {
-                    map.set_tile(x, y, Tile::Tree);
-                    break;
-                }
-            }
-        }
-    }
-
-    // Placer les murs
-    place_walls(&mut map, &mut rng);
+    // Génération de la carte
+    place_trees(&mut map, 8, &mut rng);
+    place_walls(&mut map, 15, &mut rng);
 
     let mut cutting_tree = None;
     let mut actions = 0; // Compteur d'actions du joueur
@@ -106,80 +97,5 @@ fn main() {
             display_last_scores();
             break;
         }
-    }
-}
-
-
-
-fn place_walls(map: &mut Map, rng: &mut rand::rngs::ThreadRng) {
-    let mut wall_count = 0;
-
-    while wall_count < 7 {
-        let x = rng.gen_range(0..map.width);
-        let y = rng.gen_range(0..map.height);
-
-        // Vérifier si la case est vide
-        if let Some(tile) = map.get_tile(x, y) {
-            if matches!(tile, Tile::Empty) {
-                // Placer un mur
-                map.set_tile(x, y, Tile::Wall);
-                wall_count += 1;
-
-                // Après avoir placé un mur, vérifier si on peut en placer d'autres adjacents
-                if wall_count < 7 && rng.gen_bool(0.7) { // 70% de chance de créer des murs adjacents
-                    let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
-                    let mut placed_adjacent = 0;
-
-                    for (dx, dy) in directions {
-                        let nx = (x as isize + dx) as usize;
-                        let ny = (y as isize + dy) as usize;
-
-                        if nx < map.width && ny < map.height {
-                            if let Some(adj_tile) = map.get_tile(nx, ny) {
-                                if matches!(adj_tile, Tile::Empty) && wall_count < 7 {
-                                    map.set_tile(nx, ny, Tile::Wall);
-                                    wall_count += 1;
-                                    placed_adjacent += 1;
-
-                                    // Assurez-vous d'avoir un groupe de 3 murs connectés
-                                    if placed_adjacent == 2 && wall_count >= 3 {
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-fn save_score(score: usize) {
-    let file_path = "scores.txt";
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(file_path)
-        .expect("Impossible d'ouvrir le fichier des scores.");
-    writeln!(file, "{}", score).expect("Impossible d'écrire dans le fichier des scores.");
-}
-
-fn display_last_scores() {
-    let file_path = "scores.txt";
-    let file = OpenOptions::new()
-        .read(true)
-        .open(file_path)
-        .expect("Impossible de lire le fichier des scores.");
-
-    let scores: Vec<usize> = io::BufReader::new(file)
-        .lines()
-        .filter_map(|line| line.ok()?.parse().ok())
-        .collect();
-
-    println!("Les 5 derniers scores :");
-    for score in scores.iter().rev().take(5) {
-        println!("{}", score);
     }
 }
