@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::game::Player; 
+use crate::player::Player; 
 
 
 #[derive(Debug, Clone)]  // Ajoute `Clone` ici

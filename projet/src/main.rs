@@ -4,9 +4,9 @@ use std::thread;
 use std::time::Duration;
 use rand::Rng;
 
-mod game;
+mod player;
 mod map;
-use game::Player; // Importation des éléments de game.rs
+use player::Player; // Importation des éléments de game.rs
 use map::Map;
 fn main() {
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
