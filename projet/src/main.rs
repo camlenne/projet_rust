@@ -8,15 +8,17 @@ use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
 
 mod player;
 mod map;
+mod score;
+use score::{save_score, display_last_scores}; // Import des fonctions liées aux scores
 use player::Player; // Importation des éléments de game.rs
-use map::Map;
+use map::{check_obj, Map};
 
 fn main() {
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
     let turn_clone = Arc::clone(&turn);
     let score = Arc::new(Mutex::new(0));
     let score_clone = Arc::clone(&score);
-    let map = Map::new(10, 10);
+    let mut map = Map::new(30, 15);
     let players = Arc::new(Mutex::new(vec![
         Player::new("Humain", 0, 0, 100,'🦖'),
         Player::new("Dino", 1, 0, 100,'🦕'),
@@ -86,11 +88,23 @@ fn main() {
         let input = read_input();
         
         match input {
-            'z' => humain.move_up(),
-            's' => humain.move_down(map.height),
-            'q' => humain.move_left(),
-            'd' => humain.move_right(map.width),
-            'x' => break,
+            'z' => if(check_obj(&mut map, humain.x, humain.y-1)){// TODO checksub
+                humain.move_up();
+            }
+            's' => if(check_obj(&mut map, humain.x, humain.y+1)){
+                humain.move_down(map.height);
+            }
+            'q' =>if(check_obj(&mut map, humain.x-1, humain.y)){// TODO checksub
+                humain.move_left();
+            } 
+            'd' => if(check_obj(&mut map, humain.x+1, humain.y)){
+                humain.move_right(map.width);
+            } 
+            'x' =>{
+                save_score(*scoring);
+                display_last_scores();
+                break;
+            }
             _ => {
                 println!("Commande invalide. Essayez à nouveau.");
                 continue;
@@ -98,12 +112,19 @@ fn main() {
         }
         write!(stdout, "{}", termion::clear::All).unwrap();
         *scoring +=1;
-        
+
+        if humain.x == map.width-1 && humain.y == map.height-1 {
+            println!("Félicitations ! Vous avez atteint l'objectif en {} actions.",*scoring);
+            save_score(*scoring);
+            display_last_scores();
+            break;
+        }
         *turn_num = 1; // Passer la main au thread secondaire.
         cvar.notify_one(); // Notifier le thread secondaire.
         thread::sleep(Duration::from_millis(150)); // Attendre un peu avant la prochaine itération.
-    }  
-    println!("Au revoir !");
+    }
+    println!("Terminaison demandée !");
+    
 }
 
 
