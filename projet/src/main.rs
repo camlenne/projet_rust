@@ -11,7 +11,7 @@ mod map;
 mod score;
 use score::{save_score, display_last_scores}; // Import des fonctions liées aux scores
 use player::Player; // Importation des éléments de game.rs
-use map::{check_obj, Map};
+use map::{check_obj, Map, Tile};
 
 fn main() {
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
@@ -20,15 +20,15 @@ fn main() {
     let score_clone = Arc::clone(&score);
     let mut map = Map::new(30, 15);
     let players = Arc::new(Mutex::new(vec![
-        Player::new("Humain", 0, 0, 100,'🦖'),
-        Player::new("Dino", 1, 0, 100,'🦕'),
+        Player::new("Humain", 0, 0, 100, '🦖'),
+        Player::new("Dino", 1, 0, 100, '🦕'),
     ]));
 
     // Cloner les références partagées pour le thread
     let players_thread = Arc::clone(&players);
 
     thread::spawn(move || {
-        loop{
+        loop {
             let (lock, cvar) = &*turn_clone;
             let mut turn_num = lock.lock().unwrap();
 
@@ -43,7 +43,7 @@ fn main() {
                 players_lock.push(Player::new("Nouveau", 2, 2, 100, '🦕')); // Ajouter un joueur
             }
             let mut players = players_thread.lock().unwrap();
-            for i in 1..players.len(){
+            for i in 1..players.len() {
                 //TODO préférez une itération
                 let dino = &mut players[i];
                 // Generate random number in the range [0, 99]
@@ -56,7 +56,7 @@ fn main() {
                     _ => {
                         println!("Commande invalide. Essayez à nouveau.");
                         continue;
-                    }                    
+                    }
                 }
             }
             *turn_num = 0; // Passer la main au thread principal.
@@ -73,8 +73,8 @@ fn main() {
         // Attendre que ce soit à son tour (turn_num doit être 0 pour le thread principal).
         while *turn_num != 0 {
             turn_num = cvar.wait(turn_num).unwrap();
-        }        
-        let mut scoring = score.lock().unwrap();        
+        }
+        let mut scoring = score.lock().unwrap();
         {
             // Emprunt immuable pour l'affichage
             let players_snapshot = players.lock().unwrap();
@@ -82,25 +82,33 @@ fn main() {
         }
         let mut players = players.lock().unwrap();
         let humain = &mut players[0];
-    
+
         // Demander aux joueurs de se déplacer
-        println!("{} (Déplacez-vous Z: Haut, Q: Gauche, S: Bas, D: Droite, X: Quitter) score ({}), points de vie ({})", humain.name,*scoring,humain.health);
+        println!("{} (Déplacez-vous Z: Haut, Q: Gauche, S: Bas, D: Droite, X: Quitter) score ({}), points de vie ({})", humain.name, *scoring, humain.health);
         let input = read_input();
-        
+
         match input {
-            'z' => if(check_obj(&mut map, humain.x, humain.y-1)){// TODO checksub
-                humain.move_up();
+            'z' => {
+                if check_obj(&mut map, humain.x, humain.y - 1, humain) {
+                    humain.move_up();
+                }
             }
-            's' => if(check_obj(&mut map, humain.x, humain.y+1)){
-                humain.move_down(map.height);
+            's' => {
+                if check_obj(&mut map, humain.x, humain.y + 1, humain) {
+                    humain.move_down(map.height);
+                }
             }
-            'q' =>if(check_obj(&mut map, humain.x-1, humain.y)){// TODO checksub
-                humain.move_left();
-            } 
-            'd' => if(check_obj(&mut map, humain.x+1, humain.y)){
-                humain.move_right(map.width);
-            } 
-            'x' =>{
+            'q' => {
+                if check_obj(&mut map, humain.x - 1, humain.y, humain) {
+                    humain.move_left();
+                }
+            }
+            'd' => {
+                if check_obj(&mut map, humain.x + 1, humain.y, humain) {
+                    humain.move_right(map.width);
+                }
+            }
+            'x' => {
                 save_score(*scoring);
                 display_last_scores();
                 break;
@@ -111,10 +119,19 @@ fn main() {
             }
         }
         write!(stdout, "{}", termion::clear::All).unwrap();
-        *scoring +=1;
+        *scoring += 1;
 
-        if humain.x == map.width-1 && humain.y == map.height-1 {
-            println!("Félicitations ! Vous avez atteint l'objectif en {} actions.",*scoring);
+        if let Some(tile) = map.get_tile(humain.x, humain.y) {
+            humain.remove_life(2);
+
+            println!("ras");
+        } else {
+            println!("Coup dur, vous venez de perdre 10 points de vie !");
+            humain.remove_life(20);
+        }  
+
+        if humain.x == map.width - 1 && humain.y == map.height - 1 {
+            println!("Félicitations ! Vous avez atteint l'objectif en {} actions.", *scoring);
             save_score(*scoring);
             display_last_scores();
             break;
@@ -124,9 +141,7 @@ fn main() {
         thread::sleep(Duration::from_millis(150)); // Attendre un peu avant la prochaine itération.
     }
     println!("Terminaison demandée !");
-    
 }
-
 
 // Lit l'entrée utilisateur
 fn read_input() -> char {

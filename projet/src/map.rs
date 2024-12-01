@@ -1,9 +1,10 @@
 use std::fmt;
-use crate::player::Player; 
+use rand::prelude::SliceRandom;
+use std::collections::VecDeque;
+use crate::player::Player;
 use rand::Rng;
 
-
-#[derive(Debug, Clone)]  // Ajoute `Clone` ici
+#[derive(Debug, Clone, Copy)]  // Ajoute `Clone` et `Copy` ici
 pub enum Tile {
     Empty,
     Wall,
@@ -41,31 +42,90 @@ impl Map {
 
     //TODO ajouter la partie aléatoire de la carte ici
     fn generate_map(width: usize, height: usize) -> Vec<Vec<Tile>> {
-        let tiles = vec![vec![Tile::Empty; width]; height]; // Initialise la carte avec des tuiles vides
+        let mut tiles = vec![vec![Tile::Wall; width]; height]; // Initialiser avec des murs
         let mut rng = rand::thread_rng();
 
+        // Liste des directions pour se déplacer (haut, bas, gauche, droite)
+        let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+        // Fonction pour vérifier si une cellule est dans les limites et vide
+        let is_within_bounds = |x: isize, y: isize| -> bool {
+            x >= 0 && y >= 0 && (x as usize) < width && (y as usize) < height
+        };
+
+        // Utiliser une file pour effectuer une recherche ou un tracé
+        let mut queue = VecDeque::new();
+        queue.push_back((0, 0)); // Commencer au point de départ
+        tiles[0][0] = Tile::Start;
+
+        // Tracer un chemin du début à la fin
+        while let Some((x, y)) = queue.pop_front() {
+            // Mélanger les directions pour un effet aléatoire
+            let mut shuffled_directions = directions.clone();
+            shuffled_directions.shuffle(&mut rng);
+
+            for (dx, dy) in shuffled_directions {
+                let nx = x as isize + dx;
+                let ny = y as isize + dy;
+
+                // Vérifier les limites et si la cellule est un mur
+                if is_within_bounds(nx, ny) && matches!(tiles[ny as usize][nx as usize], Tile::Wall) {
+                    let next_x = nx as usize;
+                    let next_y = ny as usize;
+
+                    // Ouvrir un chemin
+                    tiles[next_y][next_x] = Tile::Empty;
+                    queue.push_back((next_x, next_y));
+                }
+            }
+        }
+
+        // Définir la sortie (End) à la dernière cellule visitée
+        tiles[height - 1][width - 1] = Tile::End;
+
+        // Ajouter des obstacles aléatoires sans bloquer le chemin
+        for _ in 0..(width * height / 5) {
+            let x = rng.gen_range(0..width);
+            let y = rng.gen_range(0..height);
+
+            if matches!(tiles[y][x], Tile::Empty) {
+                tiles[y][x] = Tile::Wall;
+            }
+        }
+
         // Placer des murs et des arbres aléatoirement
-        let wall_count = (width * height) / 5;  // Exemple : 20% de la carte en murs
         let tree_count = (width * height) / 15; // Exemple : 10% de la carte en arbres
         let life_count = (width * height) / 20; // Exemple : 10% de la carte en arbres
 
-        let mut map = Map {
-            width,
-            height,
-            tiles,
-        };
+        let mut placed_trees = 0;
+        while placed_trees < tree_count {
+            let x = rng.gen_range(0..width);
+            let y = rng.gen_range(0..height);
 
-        place_walls(&mut map, wall_count, &mut rng);
-        place_trees(&mut map, tree_count, &mut rng);
-        place_life(&mut map, life_count, &mut rng);
+            // Ajouter un arbre uniquement sur une case vide non utilisée dans le chemin principal
+            if matches!(tiles[y][x], Tile::Empty) {
+                tiles[y][x] = Tile::Tree;
+                placed_trees += 1;
+            }
+        }
 
-        // Mettre les tuiles `Start` et `End`
-        map.set_tile(0, 0, Tile::Start);
-        map.set_tile(width - 1, height - 1, Tile::End);
+        let mut placed_life = 0;
+        while placed_life < life_count {
+            let x = rng.gen_range(0..width);
+            let y = rng.gen_range(0..height);
 
-        map.tiles
+            // Ajouter une vie uniquement sur une case vide non utilisée dans le chemin principal
+            if matches!(tiles[y][x], Tile::Empty) {
+                tiles[y][x] = Tile::Life;
+                placed_life += 1;
+            }
+        }
+
+        tiles
     }
-    
+
+
+
     pub fn display(&self, players: &Vec<Player>) {
         for y in 0..self.height {
             for x in 0..self.width {
@@ -84,7 +144,7 @@ impl Map {
             println!();
         }
     }
-    //to generate to a specific place 
+    //to generate to a specific place
     pub fn set_tile(&mut self, x: usize, y: usize, tile: Tile) {
         if x < self.width && y < self.height {
             self.tiles[y][x] = tile;
@@ -174,8 +234,7 @@ pub fn place_walls(map: &mut Map, wall_count: usize, rng: &mut rand::rngs::Threa
         }
     }
 }
-pub fn check_obj(map: &mut Map,new_x : usize, new_y : usize) -> bool{
-
+pub fn check_obj(map: &mut Map, new_x: usize, new_y: usize, player: &mut Player) -> bool {
     if let Some(tile) = map.get_tile(new_x, new_y) {
         match tile {
             Tile::Wall => {
@@ -184,22 +243,21 @@ pub fn check_obj(map: &mut Map,new_x : usize, new_y : usize) -> bool{
             }
             Tile::Tree => {
                 println!("Voulez-vous couper l'arbre ? (pour valider, tapez 'y').");
-                // Exemple d'interaction (si vous voulez confirmer une action) :
                 let mut input = String::new();
                 std::io::stdin().read_line(&mut input).unwrap();
                 if input.trim() == "y" {
                     println!("Vous avez coupé l'arbre !");
                     map.set_tile(new_x, new_y, Tile::Empty); // Remplace l'arbre par une tuile vide
                     true
-                }
-                else{
-                    println!("l'arbre est toujours présent ! tapez y pour le couper");
+                } else {
+                    println!("L'arbre est toujours présent ! Tapez 'y' pour le couper.");
                     false
                 }
             }
             Tile::Life => {
-                println!("gain de vie");
-                map.set_tile(new_x, new_y, Tile::Empty);
+                println!("Gain de vie !");
+                player.gain_life(20); // Ajouter 20 points de vie
+                map.set_tile(new_x, new_y, Tile::Empty); // Remplace la case par une tuile vide
                 true
             }
             _ => {
@@ -207,9 +265,9 @@ pub fn check_obj(map: &mut Map,new_x : usize, new_y : usize) -> bool{
                 true // Case traversable
             }
         }
-    }
-    else {
+    } else {
         println!("Cette case est hors limites !");
         false // Hors limites, on ne peut pas avancer
-    } 
+    }
 }
+
