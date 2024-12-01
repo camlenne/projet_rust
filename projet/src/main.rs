@@ -11,7 +11,7 @@ mod map;
 mod score;
 use score::{save_score, display_last_scores}; // Import des fonctions liées aux scores
 use player::Player; // Importation des éléments de game.rs
-use map::{check_obj, Map, Tile};
+use map::{check_obj, Map};
 
 fn main() {
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
@@ -89,7 +89,7 @@ fn main() {
 
         match input {
             'z' => {
-                if check_obj(&mut map, humain.x, humain.y - 1, humain) {
+                if humain.y > 0 && check_obj(&mut map, humain.x, humain.y - 1, humain) {
                     humain.move_up();
                 }
             }
@@ -99,7 +99,7 @@ fn main() {
                 }
             }
             'q' => {
-                if check_obj(&mut map, humain.x - 1, humain.y, humain) {
+                if humain.x > 0 && check_obj(&mut map, humain.x - 1, humain.y, humain) {
                     humain.move_left();
                 }
             }
@@ -121,10 +121,8 @@ fn main() {
         write!(stdout, "{}", termion::clear::All).unwrap();
         *scoring += 1;
 
-        if let Some(tile) = map.get_tile(humain.x, humain.y) {
+        if map.get_tile(humain.x, humain.y).is_some() {
             humain.remove_life(2);
-
-            println!("ras");
         } else {
             println!("Coup dur, vous venez de perdre 10 points de vie !");
             humain.remove_life(20);
@@ -140,7 +138,6 @@ fn main() {
         cvar.notify_one(); // Notifier le thread secondaire.
         thread::sleep(Duration::from_millis(150)); // Attendre un peu avant la prochaine itération.
     }
-    println!("Terminaison demandée !");
 }
 
 // Lit l'entrée utilisateur
