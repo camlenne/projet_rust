@@ -54,7 +54,6 @@ fn main() {
             }
             let mut players = players_thread.lock().unwrap();
             for i in 1..players.len() {
-                //TODO préférez une itération
                 let dino = &mut players[i];
                 // Generate random number in the range [0, 99]
                 let num = rand::thread_rng().gen_range(1..5);

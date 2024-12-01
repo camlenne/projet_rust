@@ -12,7 +12,7 @@ pub enum Tile {
     Start,
     End,
     Life,
-    piege,
+    Piege,
 }
 
 impl fmt::Display for Tile {
@@ -24,7 +24,7 @@ impl fmt::Display for Tile {
             Tile::Tree => '🌳',
             Tile::End => '🔚',
             Tile::Life => '🩹',
-            Tile::piege => '💣',
+            Tile::Piege => '💣',
         };
         write!(f, "{}", symbol)
     }
@@ -130,7 +130,7 @@ impl Map {
 
             // Ajouter une vie uniquement sur une case vide non utilisée dans le chemin principal
             if matches!(tiles[y][x], Tile::Empty) {
-                tiles[y][x] = Tile::piege;
+                tiles[y][x] = Tile::Piege;
                 placed_piege += 1;
             }
         }
@@ -227,7 +227,7 @@ pub fn check_obj(map: &mut Map, new_x: usize, new_y: usize, player: &mut Player)
                 map.set_tile(new_x, new_y, Tile::Empty); // Remplace la case par une tuile vide
                 true
             }
-            Tile::piege => {
+            Tile::Piege => {
                 //println!("Gain de vie !");
                 player.remove_life(20); // enlever 20 points de vie
                 map.set_tile(new_x, new_y, Tile::Empty); // Remplace la case par une tuile vide
