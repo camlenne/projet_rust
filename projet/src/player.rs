@@ -1,3 +1,4 @@
+
 pub struct Player{
     pub x: usize,
     pub y: usize,
@@ -16,6 +17,7 @@ impl Player {
             emoji,
         }
     }
+    
     pub fn move_up(&mut self) {
         if self.y > 0 {
             self.y -= 1;

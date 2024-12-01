@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use crate::player::Player;
 use rand::Rng;
 
-#[derive(Debug, Clone, Copy)]  // Ajoute `Clone` et `Copy` ici
+#[derive(Debug, Clone, Copy, PartialEq)]  // Ajoutez PartialEq ici
 pub enum Tile {
     Empty,
     Wall,
@@ -12,6 +12,7 @@ pub enum Tile {
     Start,
     End,
     Life,
+    piege,
 }
 
 impl fmt::Display for Tile {
@@ -23,6 +24,7 @@ impl fmt::Display for Tile {
             Tile::Tree => '🌳',
             Tile::End => '🔚',
             Tile::Life => '🩹',
+            Tile::piege => '💣',
         };
         write!(f, "{}", symbol)
     }
@@ -39,8 +41,7 @@ impl Map {
         let tiles = Map::generate_map(width, height); // Cela fonctionnera maintenant
         Map { width, height, tiles }
     }
-
-    //TODO ajouter la partie aléatoire de la carte ici
+    
     fn generate_map(width: usize, height: usize) -> Vec<Vec<Tile>> {
         let mut tiles = vec![vec![Tile::Wall; width]; height]; // Initialiser avec des murs
         let mut rng = rand::thread_rng();
@@ -94,8 +95,9 @@ impl Map {
         }
 
         // Placer des murs et des arbres aléatoirement
-        let tree_count = (width * height) / 15; // Exemple : 10% de la carte en arbres
-        let life_count = (width * height) / 20; // Exemple : 10% de la carte en arbres
+        let tree_count = (width * height) / 15;
+        let life_count = (width * height) / 20;
+        let piege_count = (width * height) / 25; 
 
         let mut placed_trees = 0;
         while placed_trees < tree_count {
@@ -118,6 +120,18 @@ impl Map {
             if matches!(tiles[y][x], Tile::Empty) {
                 tiles[y][x] = Tile::Life;
                 placed_life += 1;
+            }
+        }
+
+        let mut placed_piege = 0;
+        while placed_piege < piege_count {
+            let x = rng.gen_range(0..width);
+            let y = rng.gen_range(0..height);
+
+            // Ajouter une vie uniquement sur une case vide non utilisée dans le chemin principal
+            if matches!(tiles[y][x], Tile::Empty) {
+                tiles[y][x] = Tile::piege;
+                placed_piege += 1;
             }
         }
 
@@ -159,6 +173,34 @@ impl Map {
     }
 }
 
+
+
+pub fn find_a_place(map: &mut Map, size_map_x: i32, size_map_y: i32) -> (usize, usize) {
+    let mut rng = rand::thread_rng();
+
+    loop {
+        // Générer de nouveaux x et y aléatoires dans les limites de la carte
+        let new_x = rng.gen_range(10..size_map_x);
+        let new_y = rng.gen_range(5..size_map_y);
+
+        // Vérifier si la case est vide
+        if let Some(tile) = map.get_tile(new_x as usize, new_y as usize) {
+            match *tile {
+                Tile::Empty => {
+                    // Si la case est vide, retourner les coordonnées
+                    return (new_x as usize, new_y as usize);
+                }
+                _ => {
+                    // Si la case n'est pas vide, continuer la boucle pour générer de nouvelles coordonnées
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+
+
 pub fn check_obj(map: &mut Map, new_x: usize, new_y: usize, player: &mut Player) -> bool {
     if let Some(tile) = map.get_tile(new_x, new_y) {
         match tile {
@@ -185,12 +227,17 @@ pub fn check_obj(map: &mut Map, new_x: usize, new_y: usize, player: &mut Player)
                 map.set_tile(new_x, new_y, Tile::Empty); // Remplace la case par une tuile vide
                 true
             }
+            Tile::piege => {
+                //println!("Gain de vie !");
+                player.remove_life(20); // enlever 20 points de vie
+                map.set_tile(new_x, new_y, Tile::Empty); // Remplace la case par une tuile vide
+                true
+            }
             _ => {
                 true // Case traversable
             }
         }
     } else {
-        println!("Cette case est hors limites !");
         false // Hors limites, on ne peut pas avancer
     }
 }

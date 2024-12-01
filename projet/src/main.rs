@@ -11,19 +11,29 @@ mod map;
 mod score;
 use score::{save_score, display_last_scores}; // Import des fonctions liées aux scores
 use player::Player; // Importation des éléments de game.rs
-use map::{check_obj, Map};
+use map::{check_obj, Map,find_a_place};
+
 
 fn main() {
+    let size_map_x:i32 = 30;
+    let size_map_y:i32 = 15;
+    let mut map = Map::new(30, 15);
+
     let turn = Arc::new((Mutex::new(0), Condvar::new())); // 0 pour le thread principal, 1 pour le thread secondaire
     let turn_clone = Arc::clone(&turn);
     let score = Arc::new(Mutex::new(0));
     let score_clone = Arc::clone(&score);
-    let mut map = Map::new(30, 15);
+    
+
+    let place = find_a_place(&mut map,size_map_x,size_map_y);
+    let first_x_dino = place.0;
+    let first_y_dino = place.1;
+
     let players = Arc::new(Mutex::new(vec![
         Player::new("Humain", 0, 0, 100, '🦖'),
-        Player::new("Dino", 1, 0, 100, '🦕'),
+        Player::new("Dino", first_x_dino, first_y_dino, 100, '🦕'),
     ]));
-
+    
     // Cloner les références partagées pour le thread
     let players_thread = Arc::clone(&players);
 
@@ -124,12 +134,17 @@ fn main() {
         if map.get_tile(humain.x, humain.y).is_some() {
             humain.remove_life(2);
         } else {
-            println!("Coup dur, vous venez de perdre 10 points de vie !");
             humain.remove_life(20);
         }  
 
         if humain.x == map.width - 1 && humain.y == map.height - 1 {
             println!("Félicitations ! Vous avez atteint l'objectif en {} actions.", *scoring);
+            save_score(*scoring);
+            display_last_scores();
+            break;
+        }
+        if humain.health <=0{
+            println!("Vous n'avez pas atteint l'objectif vous êtes décédé");
             save_score(*scoring);
             display_last_scores();
             break;
